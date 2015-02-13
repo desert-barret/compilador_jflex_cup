@@ -1,0 +1,141 @@
+package lexico.sintactico;
+
+import java_cup.runtime.*;
+import java.io.FileReader;
+
+parser code {:
+    
+  public void report_error(String message, Object info) {
+    System.err.println(message);
+  }
+
+  public void syntax_error(Symbol s) {
+    String key =  (s.left + 1) + s.right + "";
+    String mensaje = ("\nError de sintaxis en linea " + (s.left + 1)  
+    		+" columna " + s.right);
+    if(AnalizadorLexico.errores.get(key) == null) {
+      mensaje += ("\nAl simbolo " + s.value.toString() 
+    		  + " le antecede un entero falta el operador");
+      report_error(mensaje, null);
+    }else {
+    mensaje += ("\nERROR: entero o cadena <CARACTER INVALIDO> entero o cadena");
+    mensaje += ("\nCORRECTO: entero o cadena <OPERADOR> entero o cadena");
+    mensaje += ("\nAl simbolo " + s.value.toString() + " le antecede un token invalido");
+    mensaje += (" ==> "+ AnalizadorLexico.errores.get(key)+" <==");
+    report_error(mensaje, null);
+    }
+  }
+   
+  public void report_fatal_error(String message, Object info) {
+	    String fatalError = ("*************************************");
+	    fatalError += ("\n*********ERROR IRECUPERABLE**********");
+	    fatalError += ("\n*************************************");
+	    report_error(fatalError, info);
+  }
+
+  public static void main(String[] args){
+    try {
+      AnalizadorSintactico asin = new AnalizadorSintactico(
+      new AnalizadorLexico( new FileReader(args[0])));
+      Object result = asin.parse().value;
+    } catch (Exception ex) {
+      ex.printStackTrace();
+    }
+  }
+:};
+
+
+
+terminal                  SEMI, OP_SUMA, OP_RESTA, OP_MULT, 
+                          PARENTESIS_IZQUIERDO, PARENTESIS_DERECHO;
+terminal Integer          ENTERO;
+terminal StringBuffer     CADENA; 
+
+non terminal Object       sentencias, sentencia;
+non terminal Integer      exprecion, operacion, termino;
+non terminal StringBuffer palabra;
+
+
+
+sentencias ::= sentencias sentencia
+                |
+                sentencia
+                ;
+
+
+sentencia ::= exprecion:e
+                {:
+                  System.out.println(" = " + e);
+                :} 
+                  SEMI
+                ;
+             
+
+exprecion ::= exprecion:e OP_SUMA operacion:f
+                {:
+                  RESULT = new Integer(e.intValue() + f.intValue());
+                :}
+                |
+                  exprecion:e OP_RESTA operacion:f
+                {:
+                  RESULT = new Integer(e.intValue() - f.intValue());
+                :}
+                |
+                operacion:n
+                {:
+                  RESULT = n; 
+                :}
+                |
+                palabra:p
+                {:
+                  int sumLetras = 0;
+                  StringBuffer letras = new StringBuffer(p);
+                  for(int i=0; i< letras.length();i++) 
+                  {
+                    sumLetras = sumLetras + letras.codePointAt(i);
+                  }
+                  RESULT = sumLetras; 
+                :}
+                ;
+               
+
+palabra   ::= palabra:p OP_MULT termino:e
+                {:
+                  RESULT = new StringBuffer(e+""+p+"");
+                :}
+                ;
+               
+
+operacion ::= operacion:f OP_MULT termino:e
+                {:
+                   RESULT = new Integer(f.intValue() * e.intValue());
+                :}
+                |
+                termino:t
+                {:
+                  RESULT = t;
+                :}
+                ;
+
+              
+termino   ::= PARENTESIS_IZQUIERDO exprecion:e PARENTESIS_DERECHO
+                {:
+                  RESULT = e;
+                :}
+                |
+                ENTERO:e
+                {:
+                  RESULT = e;
+                :}
+                |
+                CADENA:c
+                {:
+                  int sumLetras = 0;
+                  StringBuffer letras = new StringBuffer(c);
+                  for(int i=0; i< letras.length();i++) 
+                  {
+                    sumLetras = sumLetras + letras.codePointAt(i);
+                  }
+                  RESULT = sumLetras; 
+                :}
+                ;
